@@ -7,6 +7,7 @@ import struct
 import socket
 import select
 import time
+import sys
 
 args = argparse.Namespace()
 
@@ -456,4 +457,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        print("\nStopped")
+        sys.exit()
