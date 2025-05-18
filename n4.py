@@ -238,6 +238,7 @@ class N4Client:
     src_port_start   : int
     src_port_count   : int
     peer_port_offset : int
+    allow_cross_ip   : bool
     sock             : Optional[socket.socket]
     pool             : List[socket.socket]
 
@@ -245,13 +246,15 @@ class N4Client:
                  ident: bytes,
                  server_host: str, server_port: int,
                  src_port_start: int, src_port_count: int,
-                 peer_port_offset: int) -> None:
+                 peer_port_offset: int,
+                 allow_cross_ip: bool) -> None:
         self.ident              = ident
         self.server_host        = server_host
         self.server_port        = server_port
         self.src_port_start     = src_port_start
         self.src_port_count     = src_port_count
         self.peer_port_offset   = peer_port_offset
+        self.allow_cross_ip     = allow_cross_ip
         self.sock               = None
         self.pool               = []
 
@@ -328,8 +331,11 @@ class N4Client:
                 raise N4Error.PunchFailure
 
             recv_punch_pkt, recv_peer = r[0].recvfrom(0xffff)
-            if recv_peer[0] == peer[0] and recv_punch_pkt == punch_pkt:
-                break
+            if recv_punch_pkt == punch_pkt:
+                if recv_peer[0] == peer[0]:
+                    break
+                elif self.allow_cross_ip:
+                    break
 
         logging.info(" => Punch from peer ")
 
@@ -362,6 +368,7 @@ def cli_main():
     port        = args.b
     count       = args.n
     offset      = args.o
+    check_peer  = args.x
     while True:
         try:
             n4c = N4Client(
@@ -370,7 +377,8 @@ def cli_main():
                 server_port=server_port,
                 src_port_start=port,
                 src_port_count=count,
-                peer_port_offset=offset
+                peer_port_offset=offset,
+                allow_cross_ip=check_peer
             )
             logging.info("==================")
             logging.info("Source port: %d-%d" % (port, port+count))
@@ -434,6 +442,9 @@ def main() -> None:
     )
     group.add_argument(
         "-p", type=int, help="port of N4 server", default=1721
+    )
+    group.add_argument(
+        "-x", action="store_true", help="allow peer ip NOT get from server"
     )
     args = argp.parse_args()
     if args.s:
